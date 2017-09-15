@@ -1,17 +1,21 @@
 FROM alpine:3.6
 
-MAINTAINER Ric Harvey <ric@ngd.io>
+ARG NGINX_VERSION
+ARG MAINTAINER
+ARG RTMP_VERSION
+ARG GPG_KEYS
 
-ENV NGINX_VERSION 1.13.5
-ENV DEVEL_KIT_MODULE_VERSION 0.3.0
-ENV RTMP_VERSION 1.2.0
+ENV NGINX_VERSION ${NGINX_VERSION:-1.13.5}
+ENV DEVEL_KIT_MODULE_VERSION ${DEVEL_KIT_MODULE_VERSION:-0.3.0}
+ENV RTMP_VERSION ${RTMP_VERSION:-1.2.0}
+ENV MAINTAINER ${MAINTAINER:-sebastian@katallaxie.me}
 
 # resolves #166
 ENV LD_PRELOAD /usr/lib/preloadable_libiconv.so php
 RUN apk add --no-cache --repository http://dl-3.alpinelinux.org/alpine/edge/testing gnu-libiconv
 
-RUN GPG_KEYS=B0F4253373F8F6F510D42178520A9993A1C052F8 \
-  && CONFIG="\
+RUN \
+  CONFIG="\
     --prefix=/etc/nginx \
     --sbin-path=/usr/sbin/nginx \
     --modules-path=/usr/lib/nginx/modules \
@@ -77,13 +81,8 @@ RUN GPG_KEYS=B0F4253373F8F6F510D42178520A9993A1C052F8 \
     geoip-dev \
     perl-dev \
   && curl -fSL http://nginx.org/download/nginx-$NGINX_VERSION.tar.gz -o nginx.tar.gz \
-  && curl -fSL http://nginx.org/download/nginx-$NGINX_VERSION.tar.gz.asc  -o nginx.tar.gz.asc \
   && curl -fSL https://github.com/arut/nginx-rtmp-module/archive/v$RTMP_VERSION.tar.gz -o rtmp.tar.gz \
   && curl -fSL https://github.com/simpl/ngx_devel_kit/archive/v$DEVEL_KIT_MODULE_VERSION.tar.gz -o ndk.tar.gz \
-  && export GNUPGHOME="$(mktemp -d)" \
-  && gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$GPG_KEYS" \
-  && gpg --batch --verify nginx.tar.gz.asc nginx.tar.gz \
-  && rm -r "$GNUPGHOME" nginx.tar.gz.asc \
   && mkdir -p /usr/src \
   && tar -zxC /usr/src -f nginx.tar.gz \
   && tar -zxC /usr/src -f ndk.tar.gz \
@@ -115,7 +114,6 @@ RUN GPG_KEYS=B0F4253373F8F6F510D42178520A9993A1C052F8 \
   && ln -s ../../usr/lib/nginx/modules /etc/nginx/modules \
   && strip /usr/sbin/nginx* \
   && strip /usr/lib/nginx/modules/*.so \
-  && rm -rf /usr/src/nginx-$NGINX_VERSION \
   \
   # Bring in gettext so we can get `envsubst`, then throw
   # the rest away. To do this, we need to install `gettext`
@@ -144,57 +142,44 @@ RUN echo @testing http://nl.alpinelinux.org/alpine/edge/testing >> /etc/apk/repo
 #    sed -i -e "s/v3.4/edge/" /etc/apk/repositories && \
     echo /etc/apk/respositories && \
     apk update && \
-    apk add --no-cache bash \
+    apk add --no-cache \
     wget \
     supervisor \
     curl \
-    libcurl \
-    augeas-dev \
-    openssl-dev \
     ca-certificates \
-    dialog \
-    autoconf \
-    make \
-    gcc \
-    musl-dev \
-    linux-headers \
-    libmcrypt-dev \
-    libpng-dev \
-    icu-dev \
-    libpq \
-    libxslt-dev \
-    libffi-dev \
-    freetype-dev \
-    ffmpeg \
-    sqlite-dev \
-    libjpeg-turbo-dev && \
+    ffmpeg && \
     mkdir -p /etc/nginx && \
     mkdir -p /var/www/app && \
     mkdir -p /run/nginx && \
-    mkdir -p /var/log/supervisor && \
-    apk del gcc musl-dev linux-headers libffi-dev augeas-dev python-dev make autoconf
-#    ln -s /usr/bin/php7 /usr/bin/php
+    mkdir -p /var/log/supervisor
 
-ADD conf/supervisord.conf /etc/supervisord.conf
+# supervisord
+ADD \
+  conf/supervisord.conf /etc/supervisord.conf
 
 # Copy our nginx config
 RUN \
   rm -Rf /etc/nginx/nginx.conf
 ADD \
   conf/nginx.conf /etc/nginx/nginx.conf
+ADD \
+  conf/site.conf /etc/nginx/site.conf
 
 # nginx site conf
 RUN \
   rm -Rf /var/www/* && \
-  mkdir /var/www/html/
+  mkdir /var/www/html/ && \
+  mv /usr/src/nginx-rtmp-module-$RTMP_VERSION/stat.xsl /var/www && \
+  mkdir -p /var/media && \
+  # cleanup
+  rm -rf /usr/src
 
 # Add Scripts
-ADD start.sh /start.sh
-RUN chmod 755 /start.sh
+ADD \
+  init.sh /init.sh
+RUN \
+  chmod +x /init.sh
 
-# copy in code
-ADD errors/ /var/www/errors
+EXPOSE 80 1935
 
-EXPOSE 443 80 8080
-
-CMD ["/start.sh"]
+CMD ["/init.sh"]
