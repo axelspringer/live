@@ -3,7 +3,7 @@ FROM alpine:3.6
 ARG NGINX_VERSION
 ARG MAINTAINER
 ARG RTMP_VERSION
-ARG GPG_KEYS
+ARG RCLONE_VERSION
 
 ENV NGINX_VERSION ${NGINX_VERSION:-1.13.5}
 ENV DEVEL_KIT_MODULE_VERSION ${DEVEL_KIT_MODULE_VERSION:-0.3.0}
@@ -146,12 +146,18 @@ RUN echo @testing http://nl.alpinelinux.org/alpine/edge/testing >> /etc/apk/repo
     wget \
     supervisor \
     curl \
+    py-pip \
+    fuse \
     ca-certificates \
     ffmpeg && \
     mkdir -p /etc/nginx && \
     mkdir -p /var/www/app && \
     mkdir -p /run/nginx && \
     mkdir -p /var/log/supervisor
+
+# pip install yas3fs
+RUN \
+  pip install yas3fs
 
 # supervisord
 ADD \
