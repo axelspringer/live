@@ -2,15 +2,16 @@
 
 build() {
   NGINX_VERSION=$1
+  VERSION=$2
 
-  TAG=${NGINX_VERSION}
+  TAG=${NGINX_VERSION}-${VERSION}
 
 # base
   docker build \
     --compress \
     --squash \
     -t pixelmilk/live \
-    --build-arg NGINX_VERSION=${TAG} \
+    --build-arg NGINX_VERSION=${NGINX_VERSION} \
     . || exit $?
 
 # tag
@@ -20,5 +21,5 @@ build() {
     || exit $?
 }
 
-#     Nginx
-build "1.13.5"
+#     Nginx     # Version
+build "1.13.5"  "0.0.2"
