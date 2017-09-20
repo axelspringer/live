@@ -146,18 +146,12 @@ RUN echo @testing http://nl.alpinelinux.org/alpine/edge/testing >> /etc/apk/repo
     wget \
     supervisor \
     curl \
-    py-pip \
-    fuse \
     ca-certificates \
     ffmpeg && \
     mkdir -p /etc/nginx && \
     mkdir -p /var/www/app && \
     mkdir -p /run/nginx && \
     mkdir -p /var/log/supervisor
-
-# pip install yas3fs
-RUN \
-  pip install yas3fs
 
 # supervisord
 ADD \
